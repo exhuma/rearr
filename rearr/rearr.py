@@ -82,14 +82,17 @@ def sortkey(item) -> Tuple[int, str]:
     except AttributeError:
         name = item.type
 
-    if isinstance(item, EndMarker):
-        weight += 9999
-    elif isinstance(item, Class):
-        weight += 1
-    elif isinstance(item, Function):
-        weight += 2
-    elif isinstance(item, PythonNode) and item.type == "decorated":
-        weight += get_decorator_weights(item)
+    type_weight = {
+        "endmarker": 9999,
+        "classdef": 1,
+        "funcdef": 2,
+        "decorated": get_decorator_weights
+    }
+
+    weight_diff = type_weight.get(item.type, 0)
+    if callable(weight_diff):
+        weight_diff = weight_diff(item)
+    weight += weight_diff
     return (weight, name)
 
 
