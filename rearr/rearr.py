@@ -121,7 +121,10 @@ def main():
                 print(f"Changes written to {fname}")
             else:
                 print(f"Changes detected in {fname}")
+    return 1 if diffed_files else 0
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    sys.exit(main())
