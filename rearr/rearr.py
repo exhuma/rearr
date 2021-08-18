@@ -1,3 +1,4 @@
+import argparse
 from typing import Tuple
 
 import parso
@@ -11,6 +12,22 @@ from parso.python.tree import (
     PythonNode,
     String,
 )
+
+
+def parse_args():
+    """
+    Parse command-line arguments
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-w",
+        "--write",
+        help="Write modified files to disk (use with caution)",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument("filename", nargs="+", help="Files to check/modify")
+    return parser.parse_args()
 
 
 def get_decorator_weights(item):
@@ -85,18 +102,25 @@ def sort_node(node):
 
 
 def main():
-    import sys
+    args = parse_args()
+    diffed_files = []
+    for fname in args.filename:
+        with open(fname) as fptr:
+            code = fptr.read()
 
-    with open(sys.argv[1]) as fptr:
-        code = fptr.read()
+        tree = parso.parse(code)
+        root = tree.get_root_node()
 
-    tree = parso.parse(code)
-    root = tree.get_root_node()
-
-    sort_node(root)
-    with open(sys.argv[1], "w") as fptr:
-        fptr.write(root.get_code())
-    print(f"Changes written to {sys.argv[1]}")
+        sort_node(root)
+        modified_code = root.get_code()
+        if modified_code != code:
+            diffed_files.append(fname)
+            if args.write:
+                with open(fname, "w") as fptr:
+                    fptr.write(root.get_code())
+                print(f"Changes written to {fname}")
+            else:
+                print(f"Changes detected in {fname}")
 
 
 if __name__ == "__main__":
