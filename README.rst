@@ -3,9 +3,20 @@ rearr
 
 rearr will rearrage Python modules and classed by type and alphabetically.
 
-This will very likely break the code, so use at your own risk. This has not yet
-been battle tested and should not be assumed "production ready". Make sure you
-have backups or revision control before applying it to any file.
+This will **very likely** break the code, so use at your own risk. This has not
+yet been battle tested and should not be assumed "production ready". Make sure
+you have backups or revision control before applying it to any file.
+
+As of version 0.2.0, rearranging *only* takes place for files or classes
+containing the ``# rearr: enable`` top-evel comment. This makes it "opt-in" to
+avoid completely nuking the code-base.
+
+Additionally, it now only checks if something *would* be done by default. To
+overwrite files, the ``-w`` argument must be supplied. It will also
+automatically keep backups of original files.
+
+The backups can be disabled using ``--no-backup`` which might make sense in
+projects using revision control.
 
 
 Example
