@@ -16,6 +16,22 @@ from parso.python.tree import (
     String,
 )
 
+ITEM_WEIGHT = {
+    "if_stmt": 10,
+    "classdef": 20,
+    "funcdef": 30,
+    "simple_stmt": 40,
+    "endmarker": 9999,
+}
+
+ITEM_WEIGHT_CLS = {
+    "if_stmt": 10,
+    "simple_stmt": -10,
+    "classdef": 30,
+    "funcdef": 40,
+    "endmarker": 9999,
+}
+
 
 def parse_args():
     """
@@ -54,11 +70,11 @@ def get_decorator_weights(item):
             if isinstance(child, Decorator)
         ]
     deco_names = [deco.children[1].value for deco in decorators]
-    weight = 0
+    weight = ITEM_WEIGHT.get(item, 0)
     if "staticmethod" in deco_names:
-        weight = -10
+        weight -= 2
     elif "classmethod" in deco_names:
-        weight = -5
+        weight -= 1
     return weight
 
 
@@ -72,6 +88,8 @@ def _is_docstring_part(node) -> bool:
 
 def sort_class(cls) -> None:
     suite = cls.get_suite()
+    if not should_rearrange(suite):
+        return
     preamble = []
     body = []
     in_body = False
@@ -81,29 +99,26 @@ def sort_class(cls) -> None:
         else:
             body.append(c)
             in_body = True
-    suite.children = preamble + sorted(body, key=sortkey)
+    suite.children = preamble + sorted(body, key=sortkey_cls)
 
 
-def sortkey(item) -> Tuple[int, str]:
-    weight = 0
-    try:
-        name = item.name.value
-    except AttributeError:
-        name = item.type
+def mk_sortkey(weights):
+    def sortkey(item) -> Tuple[int, str]:
+        weight = 0
+        try:
+            name = item.name.value
+        except AttributeError:
+            name = item.type
 
-    type_weight = {
-        "classdef": 1,
-        "decorated": get_decorator_weights,
-        "endmarker": 9999,
-        "funcdef": 2,
-        "if_stmt": 1,
-    }
+        if item.type == "decorated":
+            weight = get_decorator_weights(item)
+        else:
+            weight = weights.get(item.type, 0)
+        return (weight, name)
+    return sortkey
 
-    weight_diff = type_weight.get(item.type, 0)
-    if callable(weight_diff):
-        weight_diff = weight_diff(item)
-    weight += weight_diff
-    return (weight, name)
+sortkey_cls = mk_sortkey(ITEM_WEIGHT_CLS)
+sortkey_mod = mk_sortkey(ITEM_WEIGHT)
 
 
 def sort_node(node):
@@ -111,7 +126,8 @@ def sort_node(node):
         for child in node.children:
             if isinstance(child, Class):
                 sort_class(child)
-        node.children = sorted(node.children, key=sortkey)
+        if should_rearrange(node):
+            node.children = sorted(node.children, key=sortkey_mod)
 
 
 def modify_file(filename: str, data: str, keep_backup: bool) -> None:
@@ -148,9 +164,6 @@ def main():
             code = fptr.read()
 
         tree = parso.parse(code)
-        if not should_rearrange(tree):
-            print(f"{fname} is not marked for arrangement. Skipping")
-            continue
         root = tree.get_root_node()
 
         sort_node(root)
