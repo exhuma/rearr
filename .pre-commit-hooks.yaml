@@ -1,0 +1,7 @@
+---
+- id: code-order
+  name: Ensure code is ordered
+  description: Sorts python modules by type and name
+  entry: rearr
+  language: python
+  types: [python]
