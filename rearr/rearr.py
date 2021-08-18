@@ -1,11 +1,12 @@
 from typing import Tuple
+
 import parso
 from parso.python.tree import (
+    Class,
     Decorator,
     EndMarker,
     Function,
     Module,
-    Class,
     Newline,
     PythonNode,
     String,
@@ -13,10 +14,18 @@ from parso.python.tree import (
 
 
 def get_decorator_weights(item):
-    decorators = [child for child in item.children if isinstance(child, Decorator)]
-    if not decorators and item.children and isinstance(item.children[0], PythonNode):
+    decorators = [
+        child for child in item.children if isinstance(child, Decorator)
+    ]
+    if (
+        not decorators
+        and item.children
+        and isinstance(item.children[0], PythonNode)
+    ):
         decorators = [
-            child for child in item.children[0].children if isinstance(child, Decorator)
+            child
+            for child in item.children[0].children
+            if isinstance(child, Decorator)
         ]
     deco_names = [deco.children[1].value for deco in decorators]
     weight = 0
