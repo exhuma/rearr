@@ -1,4 +1,7 @@
 import argparse
+import sys
+from os.path import exists
+from shutil import copy
 from typing import Tuple
 
 import parso
@@ -23,6 +26,12 @@ def parse_args():
         "-w",
         "--write",
         help="Write modified files to disk (use with caution)",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--no-backup",
+        help="Don't keep backup files",
         action="store_true",
         default=False,
     )
@@ -86,7 +95,7 @@ def sortkey(item) -> Tuple[int, str]:
         "endmarker": 9999,
         "classdef": 1,
         "funcdef": 2,
-        "decorated": get_decorator_weights
+        "decorated": get_decorator_weights,
     }
 
     weight_diff = type_weight.get(item.type, 0)
@@ -104,6 +113,22 @@ def sort_node(node):
         node.children = sorted(node.children, key=sortkey)
 
 
+def modify_file(filename: str, data: str, keep_backup: bool) -> None:
+    if keep_backup:
+        backup_filename = f"{filename}.orig"
+        if exists(backup_filename):
+            print(
+                f"!! File {backup_filename} already exists! Aborting to avoid "
+                "data-loss!",
+                file=sys.stderr,
+            )
+            return
+        copy(filename, backup_filename)
+    with open(filename, "w") as fptr:
+        fptr.write(data)
+    print(f"Changes written to {filename}")
+
+
 def main():
     args = parse_args()
     diffed_files = []
@@ -119,15 +144,11 @@ def main():
         if modified_code != code:
             diffed_files.append(fname)
             if args.write:
-                with open(fname, "w") as fptr:
-                    fptr.write(root.get_code())
-                print(f"Changes written to {fname}")
+                modify_file(fname, root.get_code(), not args.no_backup)
             else:
                 print(f"Changes detected in {fname}")
     return 1 if diffed_files else 0
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(main())
