@@ -92,10 +92,11 @@ def sortkey(item) -> Tuple[int, str]:
         name = item.type
 
     type_weight = {
-        "endmarker": 9999,
         "classdef": 1,
-        "funcdef": 2,
         "decorated": get_decorator_weights,
+        "endmarker": 9999,
+        "funcdef": 2,
+        "if_stmt": 1,
     }
 
     weight_diff = type_weight.get(item.type, 0)
@@ -129,6 +130,16 @@ def modify_file(filename: str, data: str, keep_backup: bool) -> None:
     print(f"Changes written to {filename}")
 
 
+def should_rearrange(tree) -> bool:
+    for c in tree.children:
+        if c.type != "simple_stmt":
+            continue
+        for line in parso.split_lines(c.get_code()):
+            if line.strip().startswith("# rearr: enable"):
+                return True
+    return False
+
+
 def main():
     args = parse_args()
     diffed_files = []
@@ -137,6 +148,9 @@ def main():
             code = fptr.read()
 
         tree = parso.parse(code)
+        if not should_rearrange(tree):
+            print(f"{fname} is not marked for arrangement. Skipping")
+            continue
         root = tree.get_root_node()
 
         sort_node(root)
